@@ -1,40 +1,53 @@
+// Importação dos hooks do React (useState, useEffect) e componentes do React Native
 import React, { useState, useEffect } from 'react';
-import { View, Text, Button, FlatList, StyleSheet, Alert, TextInput } from 'react-native';
+import {
+  View, Text, Button, FlatList, StyleSheet,
+  Alert, TextInput, TouchableOpacity, ScrollView
+} from 'react-native';
+
+// Importa o módulo SQLite do Expo para manipular banco de dados local
 import * as SQLite from 'expo-sqlite';
 
+// Declara uma variável para armazenar a instância do banco
 let db;
+
+// Função assíncrona para abrir o banco de dados (ou criar se não existir)
 const openDb = async () => {
-  if (!db) db = await SQLite.openDatabaseAsync('funcionarios.db');
+  if (!db) db = await SQLite.openDatabaseAsync('funcionarios.db'); // nome do arquivo do banco
   return db;
 };
 
+// Componente principal da tela de pesquisa
 export default function PesquisarFuncionarios() {
+  // Estados para armazenar:
+  // - Lista de funcionários
+  // - Filtros de pesquisa: nome, salário mínimo e cargo
   const [lista, setLista] = useState([]);
   const [nome, setNome] = useState('');
   const [salario, setSalario] = useState('');
   const [cargo, setCargo] = useState('');
 
+  // 🔍 Buscar todos os funcionários do banco
   const buscarTodos = async () => {
     try {
-      const database = await openDb();
-      const rows = await database.getAllAsync('SELECT * FROM funcionarios;');
-      setLista(rows);
+      const database = await openDb(); // Abre conexão com o banco
+      const rows = await database.getAllAsync('SELECT * FROM funcionarios;'); // Consulta todos
+      setLista(rows); // Atualiza a lista exibida
     } catch (error) {
       console.error('Erro ao buscar todos:', error);
       Alert.alert('Erro', 'Falha ao buscar todos funcionários.');
     }
   };
 
+  // 🔍 Buscar funcionários por nome
   const buscarPorNome = async () => {
-    if (!nome.trim()) {
-      Alert.alert('Aviso', 'Digite um nome para pesquisar.');
-      return;
-    }
+    if (!nome.trim()) return Alert.alert('Aviso', 'Digite um nome para pesquisar.');
+
     try {
       const database = await openDb();
       const rows = await database.getAllAsync(
         'SELECT * FROM funcionarios WHERE nome LIKE ?;',
-        [`%${nome}%`]
+        [`%${nome}%`] // LIKE com wildcard (%)
       );
       setLista(rows);
       if (rows.length === 0) Alert.alert('Aviso', 'Nenhum funcionário encontrado.');
@@ -44,12 +57,11 @@ export default function PesquisarFuncionarios() {
     }
   };
 
+  // 🔍 Buscar funcionários por salário mínimo
   const buscarPorSalario = async () => {
     const valor = parseFloat(salario);
-    if (isNaN(valor)) {
-      Alert.alert('Aviso', 'Digite um número válido para salário.');
-      return;
-    }
+    if (isNaN(valor)) return Alert.alert('Aviso', 'Digite um número válido para salário.');
+
     try {
       const database = await openDb();
       const rows = await database.getAllAsync(
@@ -64,11 +76,10 @@ export default function PesquisarFuncionarios() {
     }
   };
 
+  // 🔍 Buscar funcionários por cargo
   const buscarPorCargo = async () => {
-    if (!cargo.trim()) {
-      Alert.alert('Aviso', 'Digite um cargo para pesquisar.');
-      return;
-    }
+    if (!cargo.trim()) return Alert.alert('Aviso', 'Digite um cargo para pesquisar.');
+
     try {
       const database = await openDb();
       const rows = await database.getAllAsync(
@@ -83,20 +94,25 @@ export default function PesquisarFuncionarios() {
     }
   };
 
+  // useEffect executa a função buscarTodos() assim que o componente for montado
   useEffect(() => {
     buscarTodos();
   }, []);
 
+  // JSX: parte visual da tela
   return (
-    <View style={styles.container}>
+    <ScrollView style={styles.container}>
       <Text style={styles.title}>Pesquisar Funcionários</Text>
 
+      {/* Campo de entrada para o nome */}
       <TextInput
         style={styles.input}
         placeholder="Nome"
         value={nome}
         onChangeText={setNome}
       />
+
+      {/* Campo de entrada para o salário mínimo */}
       <TextInput
         style={styles.input}
         placeholder="Salário Mínimo"
@@ -104,6 +120,8 @@ export default function PesquisarFuncionarios() {
         value={salario}
         onChangeText={setSalario}
       />
+
+      {/* Campo de entrada para o cargo */}
       <TextInput
         style={styles.input}
         placeholder="Cargo"
@@ -111,45 +129,92 @@ export default function PesquisarFuncionarios() {
         onChangeText={setCargo}
       />
 
-      <View style={styles.buttons}>
-        <Button title="Mostrar Todos" onPress={buscarTodos} />
-        <Button title="Pesquisar Nome" onPress={buscarPorNome} />
-        <Button title="Pesquisar Salário" onPress={buscarPorSalario} />
-        <Button title="Pesquisar Cargo" onPress={buscarPorCargo} />
+      {/* Botões de ação */}
+      <View style={styles.buttonContainer}>
+        <TouchableOpacity style={styles.button} onPress={buscarTodos}>
+          <Text style={styles.buttonText}>Mostrar Todos</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.button} onPress={buscarPorNome}>
+          <Text style={styles.buttonText}>Pesquisar Nome</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.button} onPress={buscarPorSalario}>
+          <Text style={styles.buttonText}>Pesquisar Salário</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.button} onPress={buscarPorCargo}>
+          <Text style={styles.buttonText}>Pesquisar Cargo</Text>
+        </TouchableOpacity>
       </View>
 
+      {/* Lista de resultados com FlatList */}
       <FlatList
-        data={lista}
-        keyExtractor={(item) => item.id.toString()}
+        data={lista} // Lista de dados a ser exibida
+        keyExtractor={(item) => item.id.toString()} // Define a key única para cada item
         renderItem={({ item }) => (
           <View style={styles.item}>
-            <Text>{item.nome} — R$ {item.salario.toFixed(2)} — {item.cargo}</Text>
+            <Text style={styles.itemText}>
+              {item.nome} - R${item.salario.toFixed(2)} - {item.cargo}
+            </Text>
           </View>
         )}
-        style={{ marginTop: 20 }}
+        style={{ marginTop: 20, marginBottom: 50 }}
       />
-    </View>
+    </ScrollView>
   );
 }
 
+// 🎨 Estilização da interface
 const styles = StyleSheet.create({
-  container: { flex:1, padding:20 },
-  title: { fontSize:24, fontWeight:'bold', textAlign:'center', marginBottom:10 },
-  input: {
-    borderWidth:1,
-    borderColor:'#ccc',
-    borderRadius:5,
-    padding:10,
-    marginBottom:10,
+  container: {
+    flex: 1,
+    padding: 20,
+    backgroundColor: '#f0f4f7', // cor de fundo clara
   },
-  buttons: {
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: '#bbb',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 12,
+    backgroundColor: '#fff',
+    fontSize: 16,
+  },
+  buttonContainer: {
     flexDirection: 'column',
-    gap: 10,
+    gap: 12,
+    marginTop: 10,
+  },
+  button: {
+    backgroundColor: '#4a90e2', // azul moderno
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  buttonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
   item: {
-    padding:10,
-    backgroundColor:'#fff',
-    borderBottomWidth:1,
-    borderBottomColor:'#ccc',
+    padding: 15,
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    marginBottom: 10,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  itemText: {
+    fontSize: 16,
+    color: '#333',
   },
 });
